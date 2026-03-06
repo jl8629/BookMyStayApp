@@ -1,3 +1,5 @@
+import java.util.HashMap;
+
 abstract class Room {
     private String name;
     private int numberOfBeds;
@@ -63,23 +65,56 @@ class SuiteRoom extends Room {
     }
 }
 
+class RoomInventory {
+    private HashMap<String, Integer> inventory;
+
+    public RoomInventory() {
+        inventory = new HashMap<>();
+    }
+
+    public void addRoomType(String roomType, int availability) {
+        inventory.put(roomType, availability);
+    }
+
+    public int getAvailability(String roomType) {
+        return inventory.getOrDefault(roomType, 0);
+    }
+
+    public void updateAvailability(String roomType, int newAvailability) {
+        if (inventory.containsKey(roomType)) {
+            inventory.put(roomType, newAvailability);
+        }
+    }
+
+    public void displayInventory() {
+        System.out.println("Current Inventory:");
+        for (String roomType : inventory.keySet()) {
+            System.out.println(roomType + " - Availability: " + inventory.get(roomType));
+        }
+    }
+}
+
 public class BookMyStayApp {
     public static void main(String[] args) {
         Room single = new SingleRoom();
         Room doubleRoom = new DoubleRoom();
         Room suite = new SuiteRoom();
 
-        int singleAvailability = 5;
-        int doubleAvailability = 3;
-        int suiteAvailability = 2;
+        RoomInventory inventory = new RoomInventory();
+        inventory.addRoomType(single.getName(), 5);
+        inventory.addRoomType(doubleRoom.getName(), 3);
+        inventory.addRoomType(suite.getName(), 2);
 
         single.displayDetails();
-        System.out.println("Availability: " + singleAvailability);
+        System.out.println("Availability: " + inventory.getAvailability(single.getName()));
 
         doubleRoom.displayDetails();
-        System.out.println("Availability: " + doubleAvailability);
+        System.out.println("Availability: " + inventory.getAvailability(doubleRoom.getName()));
 
         suite.displayDetails();
-        System.out.println("Availability: " + suiteAvailability);
+        System.out.println("Availability: " + inventory.getAvailability(suite.getName()));
+
+        inventory.displayInventory();
     }
 }
+
