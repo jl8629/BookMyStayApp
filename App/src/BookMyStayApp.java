@@ -1,85 +1,127 @@
-abstract class Room {
-    private String name;
-    private int numberOfBeds;
-    private double size;
-    private double price;
+import java.io.*;
+import java.util.*;
 
-    public Room(String name, int numberOfBeds, double size, double price) {
-        this.name = name;
-        this.numberOfBeds = numberOfBeds;
-        this.size = size;
-        this.price = price;
+class Reservation implements Serializable {
+    private String reservationId;
+    private String guestName;
+    private String roomType;
+
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public String getName() {
-        return name;
+    public String getReservationId() {
+        return reservationId;
     }
 
-    public int getNumberOfBeds() {
-        return numberOfBeds;
+    public String getGuestName() {
+        return guestName;
     }
 
-    public double getSize() {
-        return size;
-    }
-
-    public double getPrice() {
-        return price;
-    }
-
-    public abstract void displayDetails();
-}
-
-class SingleRoom extends Room {
-    public SingleRoom() {
-        super("Single Room", 1, 200.0, 100.0);
-    }
-
-    @Override
-    public void displayDetails() {
-        System.out.println(getName() + " - Beds: " + getNumberOfBeds() + ", Size: " + getSize() + " sq ft, Price: $" + getPrice());
+    public String getRoomType() {
+        return roomType;
     }
 }
 
-class DoubleRoom extends Room {
-    public DoubleRoom() {
-        super("Double Room", 2, 350.0, 180.0);
+class InventoryService implements Serializable {
+    private Map<String, Integer> availability = new HashMap<>();
+
+    public void addRoom(String type, int count) {
+        availability.put(type, availability.getOrDefault(type, 0) + count);
     }
 
-    @Override
-    public void displayDetails() {
-        System.out.println(getName() + " - Beds: " + getNumberOfBeds() + ", Size: " + getSize() + " sq ft, Price: $" + getPrice());
+    public Map<String, Integer> getAvailability() {
+        return availability;
+    }
+
+    public void setAvailability(Map<String, Integer> availability) {
+        this.availability = availability;
     }
 }
 
-class SuiteRoom extends Room {
-    public SuiteRoom() {
-        super("Suite Room", 3, 600.0, 400.0);
+class BookingHistory implements Serializable {
+    private List<Reservation> history = new ArrayList<>();
+
+    public void addReservation(Reservation r) {
+        history.add(r);
     }
 
-    @Override
-    public void displayDetails() {
-        System.out.println(getName() + " - Beds: " + getNumberOfBeds() + ", Size: " + getSize() + " sq ft, Price: $" + getPrice());
+    public List<Reservation> getAll() {
+        return history;
+    }
+
+    public void setAll(List<Reservation> list) {
+        this.history = list;
+    }
+}
+
+class SystemState implements Serializable {
+    private InventoryService inventory;
+    private BookingHistory history;
+
+    public SystemState(InventoryService inventory, BookingHistory history) {
+        this.inventory = inventory;
+        this.history = history;
+    }
+
+    public InventoryService getInventory() {
+        return inventory;
+    }
+
+    public BookingHistory getHistory() {
+        return history;
+    }
+}
+
+class PersistenceService {
+    private String fileName = "system_state.dat";
+
+    public void save(SystemState state) {
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName));
+            oos.writeObject(state);
+            oos.close();
+            System.out.println("State saved");
+        } catch (Exception e) {
+            System.out.println("Save failed: " + e.getMessage());
+        }
+    }
+
+    public SystemState load() {
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName));
+            SystemState state = (SystemState) ois.readObject();
+            ois.close();
+            System.out.println("State loaded");
+            return state;
+        } catch (Exception e) {
+            System.out.println("Load failed, starting fresh");
+            return new SystemState(new InventoryService(), new BookingHistory());
+        }
     }
 }
 
 public class BookMyStayApp {
     public static void main(String[] args) {
-        Room single = new SingleRoom();
-        Room doubleRoom = new DoubleRoom();
-        Room suite = new SuiteRoom();
+        PersistenceService persistence = new PersistenceService();
 
-        int singleAvailability = 5;
-        int doubleAvailability = 3;
-        int suiteAvailability = 2;
+        SystemState state = persistence.load();
 
-        single.displayDetails();
-        System.out.println("Availability: " + singleAvailability);
+        InventoryService inventory = state.getInventory();
+        BookingHistory history = state.getHistory();
 
-        doubleRoom.displayDetails();
-        System.out.println("Availability: " + doubleAvailability);
+        inventory.addRoom("Single", 2);
+        history.addReservation(new Reservation("R001", "Alice", "Single"));
 
-        suite.displayDetails();
-        System.out.println("Availability: " + suiteAvailability);
+        persistence.save(new SystemState(inventory, history));
+
+        SystemState restored = persistence.load();
+
+        System.out.println("Inventory: " + restored.getInventory().getAvailability());
+        for (Reservation r : restored.getHistory().getAll()) {
+            System.out.println(r.getReservationId() + " " + r.getGuestName() + " " + r.getRoomType());
+        }
     }
 }
